@@ -785,6 +785,5 @@ document.getElementById('commandInput').addEventListener('keypress', function(ev
 
 // 초기 메시지
 window.onload = () => {
-    logToConsole("Welcome! Enter commands to begin.", 'system');
-    logToConsole("See 'Available Commands' below for usage.", 'system');
+    logToConsole("NOST 1.2 is loaded successfully.", 'system');
 };
