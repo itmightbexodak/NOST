@@ -1,11 +1,11 @@
 # NOST - Novice-Oriented Scripting Tool
 
 <details>
-<summary>한국어 가이드</summary>
+<summary>🇰🇷한국어 가이드</summary>
   
 ## 0. 실행 방법
 
-NOST는 Novice-Oriented Scripting Tool의 약자입니다. 프로그래밍 초보자가 텍스트 기반 애플리케이션을 쉽고 직관적으로 개발할 수 있도록 설계된 스크립팅 언어입니다. 간결한 구문과 명확한 명령어를 통해 복잡한 개념 없이도 아이디어를 구현할 수 있습니다.
+NOST는 Novice(초보자)-Oriented(지향) Scripting(스크립팅) Tool(도구)의 약자로, 프로그래밍 초보자가 텍스트 기반 애플리케이션을 쉽고 직관적으로 개발할 수 있도록 설계된 스크립팅 언어입니다. 간결한 구문과 명확한 명령어를 통해 복잡한 개념 없이도 아이디어를 구현할 수 있습니다.
 
 NOST를 실행하기 위해서는 다음과 같은 태그가 필요합니다: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, `<script src="https://lrl.kr/dDEWf"></script>`
 
