@@ -9,7 +9,7 @@ NOST는 Novice(초보자)-Oriented(지향) Scripting(스크립팅) Tool(도구)�
 
 
 
-NOST를 실행하기 위해서는 다음과 같은 태그가 필요합니다: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, `<script src="https://lrl.kr/cXHxH"></script>`
+NOST를 실행하기 위해서는 다음과 같은 태그가 필요합니다: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, `<script src="https://lrl.kr/VPaV"></script>`
 (파일 첨부란은 `#fileInput { display: none; }` CSS 태그로 숨길 수 있습니다.)
 
 ## 1. 기본 입출력 (Basic I/O)
@@ -228,7 +228,7 @@ NOST stands for **N**ovice-**O**riented **S**cripting **T**ool. It is a scriptin
 
 ## 0. How to use?
 
-To run NOST, the following tags are required: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, and `<script src="https://lrl.kr/cXHxH"></script>`.
+To run NOST, the following tags are required: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, and `<script src="https://lrl.kr/VPaV"></script>`.
 (The file attachment field can be hidden with the CSS tag `#fileInput { display: none; }`.)
 
 ## 1. Basic I/O
