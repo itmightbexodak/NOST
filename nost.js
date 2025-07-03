@@ -26,8 +26,8 @@ let inputTargetVarName = ''; // INPUT 명령어가 기다리는 변수 이름
 // UI 요소 참조
 const commandInput = document.getElementById('commandInput');
 const executeButton = document.getElementById('executeButton');
-const originalPlaceholder = commandInput.placeholder;
-const originalButtonText = executeButton.textContent;
+const originalPlaceholder = commandInput.placeholder; // 이 값은 이제 사용되지 않음
+const originalButtonText = executeButton.textContent; // 이 값은 이제 사용되지 않음
 
 
 // 콘솔에 메시지를 출력하는 함수
@@ -39,25 +39,38 @@ function logToConsole(message, type = 'system') {
 
     let shouldActuallyLog = false;
 
+    // 1. Errors always print, regardless of any other state
     if (type === 'error') {
-        // 오류 메시지는 항상 출력
         shouldActuallyLog = true;
-    } else if (skipOutputDueToIfElse) {
-        // IF/ELSE 조건에 의해 건너뛰어야 하는 경우, 오류가 아니면 출력하지 않음
+    } 
+    // 2. If IF/ELSE condition says to skip, suppress everything else
+    else if (skipOutputDueToIfElse) {
         shouldActuallyLog = false;
-    } else if (isExecutingFile || isRunningBlock) {
-        // 파일 또는 코드 블록 실행 중일 때는 'output' 타입만 출력
-        shouldActuallyLog = (type === 'output');
-    } else if (isRecordingBlock) {
-        // PART...EPART 녹화 중일 때는 특정 'system' 메시지만 출력
-        shouldActuallyLog = (type === 'system' && (
-            message.startsWith("Code block '") ||
-            message.startsWith("Recording block '") ||
-            message.startsWith("Recording line for '") // 이 부분을 추가했습니다!
-        ));
-    } else {
-        // 그 외의 일반적인 상황에서는 모든 메시지 출력 ('error'는 이미 위에서 처리됨)
-        shouldActuallyLog = true;
+    } 
+    // 3. When executing a loaded file or a GOTO loop (automated execution)
+    else if (isExecutingFile || isRunningBlock) {
+        // Only PRINT output, program flow messages, PART execution and GOTO execution are allowed.
+        // RPART specific messages are explicitly excluded here.
+        shouldActuallyLog = (
+            type === 'output' || // PRINT output
+            message.startsWith("--- Program execution") || // Program start/end
+            message.startsWith("=== Executing PART:") || // PART execution
+            message.startsWith("GOTO ") // GOTO command execution (jump)
+            // Explicitly NOT including RPART loop start/end/iteration messages here.
+        );
+    } 
+    // 4. When recording a PART block
+    else if (isRecordingBlock) {
+        // Allow command echo and actual output, plus specific recording system messages
+        shouldActuallyLog = (type === 'command_echo' || type === 'output' || 
+                             message.startsWith("Code block '") || // Block saved
+                             message.startsWith("Recording block '") || // Line recorded
+                             message.startsWith("Recording code block '") || // Recording started
+                             message.startsWith("PART '") && message.endsWith("definition started.")); // PART definition from file load
+    } 
+    // 5. In interactive mode (not executing file, not recording)
+    else {
+        shouldActuallyLog = true; // Print all messages (command_echo, output, system)
     }
 
     if (shouldActuallyLog) {
@@ -237,6 +250,7 @@ async function _processSingleCommand(commandLine) {
 
     // 파일 실행 중이 아니거나 코드 블록 실행 중이 아닐 때만 명령어 에코
     // IF/ELSE 내부에서 건너뛰는 명령은 에코하지 않음
+    // isRecordingBlock 상태에서도 이제 command_echo는 허용됩니다.
     if (!isExecutingFile && !isRunningBlock && shouldExecuteCurrentCommand) {
         logToConsole(`> ${commandLine}`, 'command_echo');
     }
@@ -337,8 +351,6 @@ async function _processSingleCommand(commandLine) {
                 }
 
                 logToConsole(`Waiting for input for '${varName}'...`, 'system');
-                commandInput.placeholder = `'${varName}'에 입력...`;
-                executeButton.textContent = 'Enter';
                 isWaitingForInput = true;
                 inputTargetVarName = varName;
 
@@ -374,57 +386,25 @@ async function _processSingleCommand(commandLine) {
             logToConsole("[ERROR] EPART command is for code block definition only and cannot be executed directly.", 'error');
             break;
 
-        case 'GOTO': // GOTO 명령 통합
-            if (parts.length === 2) { // GOTO <PART 이름> (점프)
-                const targetPartName = parts[1];
-                if (!codeBlocks.hasOwnProperty(targetPartName)) {
-                    logToConsole(`[ERROR] PART '${targetPartName}' not found.`, 'error');
-                    return;
-                }
-                // GOTO 발생 플래그 설정. 이 플래그를 통해 _executeBlock과 _executeMainProgramLoop가 흐름을 제어합니다.
-                variables['__GOTO_PENDING__'] = { type: 'string', value: targetPartName };
-                logToConsole(`GOTO ${targetPartName} executed.`, 'system');
-            } else if (parts.length === 3) { // GOTO <PART 이름> <반복 횟수> (반복 실행)
-                const loopBlockName = parts[1];
-                const loopCountInput = parts[2];
-
-                if (!codeBlocks.hasOwnProperty(loopBlockName)) {
-                    logToConsole(`[ERROR] Code block '${loopBlockName}' does not exist.`, 'error');
-                    return;
-                }
-
-                const loopCountResult = getValueAsNumber(loopCountInput);
-                if (!loopCountResult.success) {
-                    logToConsole(`[ERROR] Invalid repeat count for GOTO: ${loopCountResult.error}`, 'error');
-                    return;
-                }
-                const loopCount = parseInt(loopCountResult.value);
-
-                if (isNaN(loopCount) || loopCount <= 0) {
-                    logToConsole(`[ERROR] Invalid repeat count (must be a positive number): ${loopCountInput}`, 'error');
-                    return;
-                }
-
-                isRunningBlock = true; // 반복 실행 중임을 나타냄
-                logToConsole(`--- GOTO loop for '${loopBlockName}' (${loopCount} times) started ---`, 'system');
-                
-                for (let i = 0; i < loopCount; i++) {
-                    logToConsole(`--- Loop iteration ${i + 1}/${loopCount} ---`, 'system');
-                    await _executeBlock(codeBlocks[loopBlockName]); // 블록 실행
-                    if (variables['__GOTO_PENDING__']) { // 블록 실행 중 GOTO가 발생했다면
-                        break; // 반복 중단
-                    }
-                }
-                logToConsole(`--- GOTO loop for '${loopBlockName}' completed ---`, 'system');
-                isRunningBlock = false; // 반복 실행 종료
-                
-                // 반복 중 GOTO가 발생했다면, 그 GOTO를 상위로 전달하기 위해 플래그 유지
-                if (variables['__GOTO_PENDING__']) {
-                    // 이미 __GOTO_PENDING__이 설정되었으므로 추가 작업 불필요
-                }
-            } else {
-                logToConsole("[ERROR] GOTO command requires <PART Name> or <PART Name> <Repeat Count>.", 'error');
+        case 'GOTO': // GOTO 명령은 이제 순수한 점프 명령입니다.
+            if (parts.length !== 2) {
+                logToConsole("[ERROR] GOTO command requires a single <PART Name>. E.g., GOTO Scene2", 'error');
+                return;
             }
+            const targetPartName = parts[1];
+            if (!codeBlocks.hasOwnProperty(targetPartName)) {
+                logToConsole(`[ERROR] PART '${targetPartName}' not found.`, 'error');
+                return;
+            }
+            // GOTO 발생 플래그 설정. 이 플래그를 통해 _executeBlock과 _executeMainProgramLoop가 흐름을 제어합니다.
+            variables['__GOTO_PENDING__'] = { type: 'string', value: targetPartName };
+            logToConsole(`GOTO ${targetPartName} executed.`, 'system');
+            break;
+
+        case 'RPART': // RPART 명령어 복구 및 처리
+            // RPART는 이제 executeCommand에서 직접 처리됩니다.
+            // _processSingleCommand로 올 일은 없습니다.
+            logToConsole("[ERROR] RPART command is for direct execution from console or RUN/GOTO. It cannot be used inside PART blocks like this.", 'error');
             break;
 
         case 'IF':
@@ -488,17 +468,21 @@ async function _processSingleCommand(commandLine) {
                 logToConsole("[ERROR] ELSE command must be used within an IF block.", 'error');
                 return;
             }
-            let currentIfState = ifElseStack[ifElseStack.length - 1];
-            if (currentIfState.elseReached) {
+            let currentIfState = ifElseStack.length > 0 ? ifElseStack[ifElseStack.length - 1] : null; // Ensure currentIfState is not null
+            if (currentIfState && currentIfState.elseReached) { // Check currentIfState before accessing its properties
                 logToConsole("[ERROR] ELSE block already entered. ELSE can only be used once.", 'error');
                 return;
             }
 
-            currentIfState.elseReached = true;
-            const parentShouldExecuteForElse = ifElseStack.length > 1 ? ifElseStack[ifElseStack.length - 2].shouldExecute : true;
-            currentIfState.shouldExecute = parentShouldExecuteForElse && !currentIfState.conditionMet;
+            if (currentIfState) { // Only proceed if currentIfState is valid
+                currentIfState.elseReached = true;
+                const parentShouldExecuteForElse = ifElseStack.length > 1 ? ifElseStack[ifElseStack.length - 2].shouldExecute : true;
+                currentIfState.shouldExecute = parentShouldExecuteForElse && !currentIfState.conditionMet;
 
-            logToConsole(`ELSE block entered. Block execution: ${currentIfState.shouldExecute}`, 'system');
+                logToConsole(`ELSE block entered. Block execution: ${currentIfState.shouldExecute}`, 'system');
+            } else {
+                logToConsole("[ERROR] ELSE command must be used within an IF block.", 'error'); // Fallback error
+            }
             break;
 
         case 'ENDIF':
@@ -699,8 +683,6 @@ async function executeCommand() {
 
         // 상태 초기화 및 스크립트 재개
         isWaitingForInput = false;
-        commandInput.placeholder = originalPlaceholder;
-        executeButton.textContent = originalButtonText;
         if (inputResolve) {
             inputResolve(); // Promise를 해결하여 _processSingleCommand의 await를 해제
             inputResolve = null;
@@ -711,6 +693,9 @@ async function executeCommand() {
         const command = parts[0] ? parts[0].toUpperCase() : '';
 
         // --- PART/EPART 명령 녹화 시작/종료 처리 ---
+        // PART/EPART 명령 자체의 에코는 여기서 처리합니다.
+        logToConsole(`> ${commandLine}`, 'command_echo');
+
         if (isRecordingBlock) {
             if (command === 'EPART') {
                 if (parts.length < 2 || parts[1] !== currentBlockName) {
@@ -718,18 +703,16 @@ async function executeCommand() {
                     return;
                 }
                 codeBlocks[currentBlockName] = [...currentBlockLines]; // Save the recorded lines
-                logToConsole(`Code block '${currentBlockName}' successfully saved.`, 'system');
+                logToConsole(`Code block '${currentBlockName}' successfully saved.`, 'system'); // 이 메시지는 logToConsole 필터링에 따라 출력될 수 있습니다.
                 isRecordingBlock = false;
                 currentBlockName = '';
                 currentBlockLines = [];
-                commandInput.placeholder = originalPlaceholder; // 플레이스홀더 복원
-                executeButton.textContent = originalButtonText; // 버튼 텍스트 복원
             } else if (command === 'PART') {
                 logToConsole("[ERROR] Already recording a code block. Nested PART is not supported.", 'error');
             } else {
                 // If recording, just add the line to the current block, don't execute it.
+                // command_echo는 이미 위에서 처리되었으므로 여기서 다시 출력할 필요 없음.
                 currentBlockLines.push(commandLine);
-                logToConsole(`Recording line for '${currentBlockName}': ${commandLine}`, 'system');
             }
             return; // Always return if in recording mode (after handling PART/EPART or just recording)
         }
@@ -747,9 +730,7 @@ async function executeCommand() {
             isRecordingBlock = true;
             currentBlockName = blockName;
             currentBlockLines = []; // Clear previous lines for this new recording
-            logToConsole(`Recording code block '${blockName}' started. End with EPART ${blockName}.`, 'system');
-            commandInput.placeholder = `Recording for ${blockName}...`; // 플레이스홀더 변경
-            executeButton.textContent = 'Record'; // 버튼 텍스트 변경
+            logToConsole(`Recording code block '${blockName}' started. End with EPART ${blockName}.`, 'system'); // 이 메시지는 logToConsole 필터링에 따라 출력될 수 있습니다.
             return; // Do not execute PART command itself
         }
         // --- END PART/EPART recording handling ---
@@ -765,6 +746,53 @@ async function executeCommand() {
             _executeMainProgramLoop(startPart); // 메인 루프 시작 (비동기)
             return;
         }
+
+        // RPART 명령은 여기서 처리하여 반복 실행을 시작합니다.
+        if (command === 'RPART') {
+            if (parts.length !== 3) {
+                logToConsole("[ERROR] RPART command requires <PART Name> and <Repeat Count>. E.g., RPART myLoop 5", 'error');
+                return;
+            }
+            const loopBlockName = parts[1];
+            const loopCountInput = parts[2];
+
+            if (!codeBlocks.hasOwnProperty(loopBlockName)) {
+                logToConsole(`[ERROR] Code block '${loopBlockName}' does not exist.`, 'error');
+                return;
+            }
+
+            const loopCountResult = getValueAsNumber(loopCountInput);
+            if (!loopCountResult.success) {
+                logToConsole(`[ERROR] Invalid repeat count for RPART: ${loopCountResult.error}`, 'error');
+                return;
+            }
+            const loopCount = parseInt(loopCountResult.value);
+
+            if (isNaN(loopCount) || loopCount <= 0) {
+                logToConsole(`[ERROR] Invalid repeat count (must be a positive number): ${loopCountInput}`, 'error');
+                return;
+            }
+
+            isRunningBlock = true; // 반복 실행 중임을 나타냄
+            logToConsole(`--- RPART loop for '${loopBlockName}' (${loopCount} times) started ---`, 'system'); // 이 메시지는 이제 logToConsole 필터링에 따라 출력되지 않습니다.
+            
+            for (let i = 0; i < loopCount; i++) {
+                logToConsole(`--- RPART iteration ${i + 1}/${loopCount} ---`, 'system'); // 이 메시지는 이제 logToConsole 필터링에 따라 출력되지 않습니다.
+                await _executeBlock(codeBlocks[loopBlockName]); // 블록 실행
+                if (variables['__GOTO_PENDING__']) { // 블록 실행 중 GOTO가 발생했다면
+                    break; // 반복 중단
+                }
+            }
+            logToConsole(`--- RPART loop for '${loopBlockName}' completed ---`, 'system'); // 이 메시지는 이제 logToConsole 필터링에 따라 출력되지 않습니다.
+            isRunningBlock = false; // 반복 실행 종료
+            
+            // 반복 중 GOTO가 발생했다면, 그 GOTO를 상위로 전달하기 위해 플래그 유지
+            if (variables['__GOTO_PENDING__']) {
+                // 이미 __GOTO_PENDING__이 설정되었으므로 추가 작업 불필요
+            }
+            return; // RPART 실행 후 함수 종료
+        }
+
 
         // 그 외의 모든 명령은 _processSingleCommand로 전달
         await _processSingleCommand(commandLine);
@@ -838,5 +866,5 @@ document.getElementById('commandInput').addEventListener('keypress', function(ev
 
 // 초기 메시지
 window.onload = () => {
-    logToConsole("NOST 1.4 is loaded successfully.", 'system');
+    logToConsole("NOST 1.12 loaded.", 'system');
 };
