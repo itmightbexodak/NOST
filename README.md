@@ -9,7 +9,7 @@ NOST는 Novice(초보자)-Oriented(지향) Scripting(스크립팅) Tool(도구)�
 
 
 
-NOST를 실행하기 위해서는 다음과 같은 태그가 필요합니다: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, `<script src="https://lrl.kr/VPaV"></script>`
+NOST를 실행하기 위해서는 다음과 같은 태그가 필요합니다: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, `<script src="https://lrl.kr/cXHxH"></script>`
 (파일 첨부란은 `#fileInput { display: none; }` CSS 태그로 숨길 수 있습니다.)
 
 ## 1. 기본 입출력 (Basic I/O)
@@ -157,6 +157,20 @@ NOST 언어의 가장 기본적인 기능으로, 정보를 화면에 표시하�
     GOTO ItemSpawn currentLoop // ItemSpawn PART를 currentLoop 변수 값만큼 반복 실행
     ```
 
+    ### `RPART` (반복 실행)
+
+*   **목적**: 특정 `PART` 블록을 지정된 횟수만큼 반복 실행합니다. 콘솔에서 직접 실행하여 간단한 반복 작업을 수행하거나, `.nost` 파일 내에서 루프를 구현할 수 있습니다.
+*   **문법**: `RPART <PART이름> <반복횟수 또는 변수>`
+    *   `<PART이름>`: 반복할 `PART` 블록의 이름입니다.
+    *   `<반복횟수 또는 변수>`: `PART` 블록을 반복할 횟수(숫자 리터럴) 또는 숫자를 포함하는 변수 이름입니다. `RPART` 반복 실행 중 내부에 `GOTO` 명령이 있으면 반복은 즉시 중단되고 해당 `GOTO`가 지시하는 곳으로 점프합니다.
+*   **예시**:
+    ```nost
+    RPART LoopAnimation 5     // LoopAnimation PART를 5번 반복 실행
+
+    SAVE 3 currentLoop
+    RPART ItemSpawn currentLoop // ItemSpawn PART를 currentLoop 변수 값만큼 반복 실행
+    ```
+
 ## 4. 유틸리티 (Utility)
 
 편의 기능을 제공하는 명령어입니다.
@@ -228,7 +242,7 @@ NOST stands for **N**ovice-**O**riented **S**cripting **T**ool. It is a scriptin
 
 ## 0. How to use?
 
-To run NOST, the following tags are required: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, and `<script src="https://lrl.kr/VPaV"></script>`.
+To run NOST, the following tags are required: `<textarea id="consoleOutput" readonly></textarea>`, `<input type="text" id="commandInput">`, `<button id="executeButton" onclick="executeCommand()">Run</button>`, `<input type="file" id="fileInput" accept=".nost">`, and `<script src="https://lrl.kr/cXHxH"></script>`.
 (The file attachment field can be hidden with the CSS tag `#fileInput { display: none; }`.)
 
 ## 1. Basic I/O
@@ -375,7 +389,21 @@ Commands for controlling the program's execution flow, branching based on condit
     SAVE 3 currentLoop
     GOTO ItemSpawn currentLoop // Repeats the ItemSpawn PART as many times as the value in 'currentLoop'
     ```
+    
+### `RPART` (Repeat Execution)
 
+*   **Purpose**: Repeatedly executes a specific `PART` block for a specified number of times. Can be executed directly from the console for simple repetitive tasks or used within `.nost` files to implement loops.
+*   **Syntax**: `RPART <PART_name> <repeat_count_or_variable>`
+    *   `<PART_name>`: The name of the `PART` block to repeat.
+    *   `<repeat_count_or_variable>`: The number of times to repeat the `PART` block (number literal) or a variable name containing a number. If a `GOTO` command is encountered within an `RPART` loop, the loop immediately stops, and the program jumps to the new `GOTO` target.
+*   **Example**:
+    ```nost
+    RPART LoopAnimation 5     // Repeats the LoopAnimation PART 5 times
+
+    SAVE 3 currentLoop
+    RPART ItemSpawn currentLoop // Repeats the ItemSpawn PART as many times as the value in 'currentLoop'
+    ```
+    
 ## 4. Utility
 
 Commands providing convenience functions.
